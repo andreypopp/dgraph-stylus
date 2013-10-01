@@ -8,15 +8,11 @@ var Parser        = require('stylus/lib/parser'),
     EventEmitter  = require('events').EventEmitter,
     Compiler      = require('stylus/lib/visitor/compiler'),
     Normalizer    = require('stylus/lib/visitor/normalizer'),
-    events        = new EventEmitter,
     nodes         = require('stylus/lib/nodes'),
     path          = require('path'),
-    join          = path.join,
     utils         = require('stylus/lib/utils'),
-    util          = require('util'),
     Evaluator     = require('./evaluator'),
     Importer      = require('./importer');
-
 
 /**
  * Initialize a new `Renderer` with the given `str` and `options`.
@@ -29,12 +25,11 @@ function Renderer(str, options) {
   options = options || {};
   options.globals = {};
   options.functions = {};
-  options.imports = [join(__dirname, 'node_modules/stylus/lib/functions/index.styl')];
+  options.imports = [path.join(__dirname, 'node_modules/stylus/lib/functions/index.styl')];
   options.paths = options.paths || [];
   options.filename = options.filename || 'stylus';
   this.options = options;
   this.str = str;
-  this.events = events;
   this.imports = undefined;
 };
 
