@@ -4,15 +4,27 @@
  * Renderer which resolves @import via dgraph API.
  */
 
-var Parser        = require('stylus/lib/parser'),
-    EventEmitter  = require('events').EventEmitter,
+var fs            = require('fs'),
+    q             = require('kew'),
+    path          = require('path'),
+    Parser        = require('stylus/lib/parser'),
     Compiler      = require('stylus/lib/visitor/compiler'),
     Normalizer    = require('stylus/lib/visitor/normalizer'),
     nodes         = require('stylus/lib/nodes'),
-    path          = require('path'),
     utils         = require('stylus/lib/utils'),
+    assign        = require('lodash').assign,
     Evaluator     = require('./evaluator'),
     Importer      = require('./importer');
+
+var BUILTINS = {},
+    FUNCTIONS_FILENAME = path.join(
+        __dirname,
+        'node_modules/stylus/lib/functions/index.styl');
+
+BUILTINS[FUNCTIONS_FILENAME] = {
+  id: FUNCTIONS_FILENAME,
+  block: parseSync(FUNCTIONS_FILENAME)
+}
 
 /**
  * Initialize a new `Renderer` with the given `str` and `options`.
@@ -25,7 +37,7 @@ function Renderer(str, options) {
   options = options || {};
   options.globals = {};
   options.functions = {};
-  options.imports = [path.join(__dirname, 'node_modules/stylus/lib/functions/index.styl')];
+  options.imports = [];
   options.paths = options.paths || [];
   options.filename = options.filename || 'stylus';
   this.options = options;
@@ -33,68 +45,45 @@ function Renderer(str, options) {
   this.imports = undefined;
 };
 
-Renderer.prototype.__proto__ = EventEmitter.prototype;
-
 /**
- * Parse and evaluate AST, then callback `fn(err, css, js)`.
+ * Parse and evaluate AST, then callback `cb(err, css, js)`.
  *
- * @param {Function} fn
+ * @param {Function} cb
  * @api public
  */
-Renderer.prototype.render = function(fn) {
-  var parser = this.parser = new Parser(this.str, this.options);
-  try {
-    nodes.filename = this.options.filename;
-    // parse
-    var ast = parser.parse();
-
-    this.importer = new Importer(ast, this.options);
-    this.importer.import().then(function(imports) {
+Renderer.prototype.render = function(cb) {
+  q.resolve()
+    .then(function() {
+      nodes.filename = this.options.filename;
+      this.parser = new Parser(this.str, this.options);
+      this.ast = this.parser.parse();
+      this.importer = new Importer(this.ast, this.options);
+      return this.importer.import()
+    }.bind(this))
+    .then(function(imports) {
       this.imports = imports;
-      try {
-        // evaluate
-        this.evaluator = new Evaluator(ast, this.options, imports);
-        this.nodes = nodes;
-        this.evaluator.renderer = this;
-        ast = this.evaluator.evaluate();
-
-        // normalize
-        var normalizer = new Normalizer(ast, this.options);
-        ast = normalizer.normalize();
-
-        // compile
-        var compiler = new Compiler(ast, this.options)
-          , css = compiler.compile();
-
-        if (!fn) {
-          this.emit('end', css);
-          return css;
-        } else {
-          if (!this.listeners('end').length) {
-            return fn(null, css);
-          }
-          this.emit('end', css, function(err, css) {
-            fn(err, css);
-          });
-        }
-      } catch (err) {
-        var options = {};
-        options.input = err.input || this.str;
-        options.filename = err.filename || this.options.filename;
-        options.lineno = err.lineno || parser.lexer.lineno;
-        if (!fn) throw utils.formatException(err, options);
-        fn(utils.formatException(err, options));
-      }
+      this.evaluator = new Evaluator(this.ast, this.options, assign({}, BUILTINS, imports));
+      this.nodes = nodes;
+      this.evaluator.renderer = this;
+      this.ast = this.evaluator.evaluate();
+      this.normalizer = new Normalizer(this.ast, this.options);
+      this.ast = this.normalizer.normalize();
+      this.compiler = new Compiler(this.ast, this.options);
+      cb(null, this.compiler.compile());
+    }.bind(this))
+    .fail(function(err) {
+      var options = {
+        input: err.input || this.str,
+        filename: err.filename || this.options.filename,
+        lineno: err.lineno || this.parser.lexer.lineno
+      };
+      cb(utils.formatException(err, options));
     }.bind(this));
-
-  } catch (err) {
-    var options = {};
-    options.input = err.input || this.str;
-    options.filename = err.filename || this.options.filename;
-    options.lineno = err.lineno || parser.lexer.lineno;
-    if (!fn) throw utils.formatException(err, options);
-    fn(utils.formatException(err, options));
-  }
 };
+
+function parseSync(filename) {
+  var parser = new Parser(fs.readFileSync(filename, 'utf8'));
+  return parser.parse();
+}
 
 module.exports = Renderer;

@@ -26,7 +26,7 @@ function Importer(root, options, imports) {
 util.inherits(Importer, Visitor);
 
 Importer.prototype.import = function() {
-  var imports = this.visit(this.root).concat(this.options.imports);
+  var imports = this.visit(this.root)
   return this.resolve(imports)
     .then(function() { return this.imports; }.bind(this));
 }
