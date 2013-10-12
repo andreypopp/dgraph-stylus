@@ -80,8 +80,4 @@ Importer.prototype.visitImport = function(node) {
   return {node: node, id: node.path.nodes[0].val};
 }
 
-function flattenArray(arr) {
-  return arr.reduceRight(function(a, b) { return a.concat(b); }, []);
-}
-
 module.exports = Importer;

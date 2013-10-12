@@ -12,7 +12,6 @@ var fs            = require('fs'),
     Normalizer    = require('stylus/lib/visitor/normalizer'),
     nodes         = require('stylus/lib/nodes'),
     utils         = require('stylus/lib/utils'),
-    assign        = require('lodash').assign,
     Evaluator     = require('./evaluator'),
     Importer      = require('./importer');
 
@@ -44,7 +43,7 @@ function Renderer(str, options) {
   this.options = options;
   this.str = str;
   this.imports = undefined;
-};
+}
 
 /**
  * Parse and evaluate AST, then callback `cb(err, css, js)`.

@@ -5,6 +5,7 @@
   "expr": true,
   "globalstrict": true,
   "globals": {
+    "__dirname": false,
     "Buffer": false,
     "require": false,
     "process": false,
