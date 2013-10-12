@@ -16,15 +16,16 @@ var fs            = require('fs'),
     Evaluator     = require('./evaluator'),
     Importer      = require('./importer');
 
-var BUILTINS = {},
-    FUNCTIONS_FILENAME = path.join(
+var FUNCTIONS_FILENAME = path.join(
         __dirname,
         'node_modules/stylus/lib/functions/index.styl');
 
-BUILTINS[FUNCTIONS_FILENAME] = {
-  id: FUNCTIONS_FILENAME,
-  block: parseSync(FUNCTIONS_FILENAME)
-}
+var BUILTINS = [
+  {
+    id: FUNCTIONS_FILENAME,
+    block: parseSync(FUNCTIONS_FILENAME)
+  }
+];
 
 /**
  * Initialize a new `Renderer` with the given `str` and `options`.
@@ -62,7 +63,7 @@ Renderer.prototype.render = function(cb) {
     }.bind(this))
     .then(function(imports) {
       this.imports = imports;
-      this.evaluator = new Evaluator(this.ast, this.options, assign({}, BUILTINS, imports));
+      this.evaluator = new Evaluator(this.ast, this.options, imports, BUILTINS);
       this.nodes = nodes;
       this.evaluator.renderer = this;
       this.ast = this.evaluator.evaluate();
