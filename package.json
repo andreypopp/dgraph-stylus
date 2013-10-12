@@ -4,16 +4,18 @@
   "description": "Stylus transform for dgraph",
   "main": "index.js",
   "dependencies": {
-    "dgraph": "~0.6.2",
     "fs-promise": "~0.0.2",
-    "kew": "git+https://github.com/andreypopp/kew.git",
+    "kew": "~0.2.2",
     "lodash": "~2.2.0",
     "stylus": "~0.38.0"
   },
   "devDependencies": {
+    "dgraph": "~0.6.2",
     "semver": "~2.1.0",
     "jshint": "~2.1.11",
-    "mocha": "~1.13.0"
+    "mocha": "~1.13.0",
+    "stream-aggregate": "~0.1.1",
+    "css": "~1.4.2"
   },
   "scripts": {
     "test": "make test"
