@@ -12,7 +12,7 @@ var Visitor = require('stylus/lib/visitor'),
 
 function readModule(mod) {
   var p = fs.readFile(mod.id, 'utf8').then(function(source) {
-    mod.source = source;
+    mod._source = source;
     return mod;
   });
   return p
@@ -67,7 +67,7 @@ Importer.prototype.resolve = function(imports) {
 
 Importer.prototype.parseModule = function(mod) {
   var options = assign({}, this.options, {filename: mod.id}),
-      parser = new Parser(mod.source, options);
+      parser = new Parser(mod._source, options);
   return parser.parse();
 }
 
