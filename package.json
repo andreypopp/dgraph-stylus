@@ -1,6 +1,6 @@
 {
   "name": "dgraph-stylus",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Stylus transform for dgraph",
   "main": "index.js",
   "dependencies": {
