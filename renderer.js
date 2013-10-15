@@ -19,12 +19,14 @@ var FUNCTIONS_FILENAME = path.join(
         __dirname,
         'node_modules/stylus/lib/functions/index.styl');
 
-var BUILTINS = [
-  {
-    id: FUNCTIONS_FILENAME,
-    block: parseSync(FUNCTIONS_FILENAME)
-  }
-];
+function getBuiltins() {
+  return [
+    {
+      id: FUNCTIONS_FILENAME,
+      block: parseSync(FUNCTIONS_FILENAME)
+    }
+  ];
+}
 
 /**
  * Initialize a new `Renderer` with the given `str` and `options`.
@@ -62,7 +64,7 @@ Renderer.prototype.render = function(cb) {
     }.bind(this))
     .then(function(imports) {
       this.imports = imports;
-      this.evaluator = new Evaluator(this.ast, this.options, imports, BUILTINS);
+      this.evaluator = new Evaluator(this.ast, this.options, imports, getBuiltins());
       this.nodes = nodes;
       this.evaluator.renderer = this;
       this.ast = this.evaluator.evaluate();
@@ -72,6 +74,7 @@ Renderer.prototype.render = function(cb) {
       cb(null, this.compiler.compile());
     }.bind(this))
     .fail(function(err) {
+      return cb(err);
       var options = {
         input: err.input || this.str,
         filename: err.filename || this.options.filename,

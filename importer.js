@@ -33,10 +33,11 @@ Importer.prototype.import = function() {
 Importer.prototype.resolve = function(imports) {
   var self = this;
   var promises = imports.map(function(imp) {
+    var id = imp.id;
 
-    var id = imp.id || imp;
+    if (!id) return;
 
-    if (id[0].match(/^\.|\//) && !id.match(/\.(css|styl)/))
+    if (id.match(/^\.|\//) && !id.match(/\.(css|styl)/))
       id = id + '.styl';
 
     return self.options.resolve(id, {id: self.options.filename})
@@ -50,7 +51,7 @@ Importer.prototype.resolve = function(imports) {
 
   });
 
-  return q.all(promises).then(function(imports) {
+  return q.all(promises.filter(Boolean)).then(function(imports) {
     var newImports = [];
     imports.forEach(function(imp) {
       self.imports[imp.id] = imp;

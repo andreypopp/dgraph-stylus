@@ -14,7 +14,7 @@
     "semver": "~2.1.0",
     "jshint": "~2.1.11",
     "mocha": "~1.13.0",
-    "stream-aggregate": "~0.1.1",
+    "stream-aggregate-promise": "~0.1.1",
     "css": "~1.4.2"
   },
   "scripts": {
