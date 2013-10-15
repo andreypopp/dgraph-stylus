@@ -74,7 +74,6 @@ Renderer.prototype.render = function(cb) {
       cb(null, this.compiler.compile());
     }.bind(this))
     .fail(function(err) {
-      return cb(err);
       var options = {
         input: err.input || this.str,
         filename: err.filename || this.options.filename,
