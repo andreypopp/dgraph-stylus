@@ -67,4 +67,17 @@ describe('dgraph-stylus', function() {
     }).fail(done);
   });
 
+  it('processes dependencies in subdirectories', function(done) {
+    aggregate(getGraph('depend_on_subdir.styl')).then(function(g) {
+      assert.equal(g.length, 3);
+      done();
+    }).fail(done);
+  });
+
+  it('tries to resolve local deps first (even if relative path is not used)', function(done) {
+    aggregate(getGraph('prefer_local.styl')).then(function(g) {
+      assert.equal(g.length, 2);
+      done();
+    }).fail(done);
+  });
 });

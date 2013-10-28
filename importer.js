@@ -8,7 +8,8 @@ var Visitor = require('stylus/lib/visitor'),
     q       = require('kew'),
     fs      = require('fs-promise'),
     util    = require('util'),
-    assign  = require('lodash').assign;
+    assign  = require('lodash').assign,
+    flatten = require('lodash').flatten;
 
 function readModule(mod) {
   var p = fs.readFile(mod.id, 'utf8').then(function(source) {
@@ -30,7 +31,9 @@ Importer.prototype.import = function() {
     .then(function() { return this.imports; }.bind(this));
 }
 
-Importer.prototype.resolve = function(imports) {
+Importer.prototype.resolve = function(imports, parent) {
+  parent = parent || {id: this.options.filename};
+
   var self = this;
   var promises = imports.map(function(imp) {
     var id = imp.id;
@@ -40,28 +43,24 @@ Importer.prototype.resolve = function(imports) {
     if (id.match(/^\.|\//) && !id.match(/\.(css|styl)/))
       id = id + '.styl';
 
-    return self.options.resolve(id, {id: self.options.filename})
+    return self.options.resolve('./' + id.replace(/\.styl$/, '') + '.styl', parent)
+      .fail(function() { return self.options.resolve(id, parent); })
       .then(readModule)
       .then(function(mod) {
         if (imp.node)
           imp.node.path.nodes[0].val = mod.id;
         var block = self.parseModule(mod);
         return {id: mod.id, block: block}
-      }).end();
+      });
 
   });
 
   return q.all(promises.filter(Boolean)).then(function(imports) {
-    var newImports = [];
-    imports.forEach(function(imp) {
-      self.imports[imp.id] = imp;
-      newImports = newImports.concat(self.visit(imp.block));
-    });
-    newImports = newImports.filter(function(id) {
-      return self.imports[id] === undefined
-    });
-    if (newImports.length > 0)
-      return self.resolve(newImports);
+    var promises = imports.map(function(imp) {
+          self.imports[imp.id] = imp;
+          return self.resolve(self.visit(imp.block), {id: imp.id});
+        });
+    return q.all(flatten(promises));
   });
 }
 
