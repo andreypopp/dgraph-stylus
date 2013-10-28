@@ -19,6 +19,10 @@ function readModule(mod) {
   return p
 }
 
+function asLocal(id) {
+  return './' + id.replace(/\.styl$/, '') + '.styl';
+}
+
 function Importer(root, options, imports) {
   Visitor.call(this, root);
   this.options = options;
@@ -43,14 +47,14 @@ Importer.prototype.resolve = function(imports, parent) {
     if (id.match(/^\.|\//) && !id.match(/\.(css|styl)/))
       id = id + '.styl';
 
-    return self.options.resolve('./' + id.replace(/\.styl$/, '') + '.styl', parent)
+    return self.options.resolve(asLocal(id), parent)
       .fail(function() { return self.options.resolve(id, parent); })
       .then(readModule)
       .then(function(mod) {
         if (imp.node)
           imp.node.path.nodes[0].val = mod.id;
         var block = self.parseModule(mod);
-        return {id: mod.id, block: block}
+        return {id: mod.id, block: block, package: mod.package};
       });
 
   });
@@ -58,7 +62,8 @@ Importer.prototype.resolve = function(imports, parent) {
   return q.all(promises.filter(Boolean)).then(function(imports) {
     var promises = imports.map(function(imp) {
           self.imports[imp.id] = imp;
-          return self.resolve(self.visit(imp.block), {id: imp.id});
+          var parent = {id: imp.id, package: imp.package};
+          return self.resolve(self.visit(imp.block), parent);
         });
     return q.all(flatten(promises));
   });
