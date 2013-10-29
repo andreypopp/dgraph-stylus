@@ -20,12 +20,18 @@ var FUNCTIONS_FILENAME = path.join(
         'node_modules/stylus/lib/functions/index.styl');
 
 function getBuiltins() {
-  return [
-    {
-      id: FUNCTIONS_FILENAME,
-      block: parseSync(FUNCTIONS_FILENAME)
+  var promise = q.defer();
+  fs.readFile(FUNCTIONS_FILENAME, 'utf8', function(err, src) {
+    if (err) return promise.reject(err);
+    try {
+      var parser = new Parser(src);
+      var block = parser.parse();
+    } catch (e) {
+      return promise.reject(err);
     }
-  ];
+    promise.resolve([{id: FUNCTIONS_FILENAME, block: block}]);
+  });
+  return promise;
 }
 
 /**
@@ -67,13 +73,15 @@ Renderer.prototype.render = function(cb) {
       return this.importer.import()
     }.bind(this))
     .then(function(imports) {
-      this.imports = imports;
-      this.evaluator = new Evaluator(this.ast, this.options, imports, getBuiltins());
-      this.nodes = nodes;
-      this.evaluator.renderer = this;
-      this.ast = this.evaluator.evaluate();
-      var css = this.compileAST(this.ast);
-      cb(null, css);
+      return getBuiltins().then(function(builtins) {
+        this.imports = imports;
+        this.evaluator = new Evaluator(this.ast, this.options, imports, builtins);
+        this.nodes = nodes;
+        this.evaluator.renderer = this;
+        this.ast = this.evaluator.evaluate();
+        var css = this.compileAST(this.ast);
+        cb(null, css);
+      }.bind(this));
     }.bind(this))
     .fail(function(err) {
       var options = {
@@ -91,11 +99,6 @@ Renderer.prototype.compileAST = function(ast) {
   var compiler = new Compiler(ast, this.options);
   var css = compiler.compile();
   return css
-}
-
-function parseSync(filename) {
-  var parser = new Parser(fs.readFileSync(filename, 'utf8'));
-  return parser.parse();
 }
 
 module.exports = Renderer;

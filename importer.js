@@ -36,6 +36,9 @@ Importer.prototype.import = function() {
 }
 
 Importer.prototype.resolve = function(imports, parent) {
+  if (imports.length === 0)
+    return q.resolve([]);
+
   parent = parent || {id: this.options.filename};
 
   var self = this;
