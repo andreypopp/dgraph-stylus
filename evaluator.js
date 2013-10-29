@@ -38,7 +38,7 @@ Evaluator.prototype.evaluateImport = function(imp) {
   nodes.filename = id;
   block.parent = this.root;
   block.scope = false;
-  this.visit(block);
+  imp.evaluatedBlock = this.visit(block);
   this.importStack.pop();
   if (this.importStack.length) this.paths.pop();
 }

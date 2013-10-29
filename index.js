@@ -5,7 +5,11 @@ var Renderer  = require('./renderer'),
 
 module.exports = function(mod, graph) {
   if (!mod.id.match(/\.styl$/)) return;
+
+  graph.__stylus_cache = graph.__stylus_cache || {};
+
   var renderer = new Renderer(mod.source.toString(), {
+    cachedAST: graph.__stylus_cache[mod.id],
     filename: mod.id,
     resolve: graph.resolve.bind(graph)
   });
@@ -15,8 +19,10 @@ module.exports = function(mod, graph) {
       promise.reject(err)
     } else {
       var deps = {};
-      for (var id in renderer.imports)
+      for (var id in renderer.imports) {
         deps[id] = id;
+        graph.__stylus_cache[id] = renderer.imports[id].evaluatedBlock;
+      }
       promise.resolve({source: source, deps: deps});
     }
   });

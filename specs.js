@@ -10,7 +10,10 @@ function fixture(filename) {
 }
 
 function getGraph(filename) {
-  return dgraph(fixture(filename), {transform: transform})
+  return dgraph(fixture(filename), {
+    transform: transform,
+    transformKey: ["browserify", "transform"]
+  })
 }
 
 describe('dgraph-stylus', function() {
@@ -91,6 +94,12 @@ describe('dgraph-stylus', function() {
   it('processes pkg deps (refer via package name)', function(done) {
     aggregate(getGraph('depend_on_pkg.styl')).then(function(g) {
       assert.equal(g.length, 2);
+      done();
+    }).fail(done);
+  });
+
+  it('can compile bootstrap', function(done) {
+    aggregate(getGraph('depend_on_bootstrap.styl')).then(function(g) {
       done();
     }).fail(done);
   });

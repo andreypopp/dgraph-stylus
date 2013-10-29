@@ -56,6 +56,10 @@ function Renderer(str, options) {
 Renderer.prototype.render = function(cb) {
   q.resolve()
     .then(function() {
+      if (this.options.cachedAST) {
+        var css = this.compileAST(this.options.cachedAST);
+        return cb(null, css);
+      }
       nodes.filename = this.options.filename;
       this.parser = new Parser(this.str, this.options);
       this.ast = this.parser.parse();
@@ -68,10 +72,8 @@ Renderer.prototype.render = function(cb) {
       this.nodes = nodes;
       this.evaluator.renderer = this;
       this.ast = this.evaluator.evaluate();
-      this.normalizer = new Normalizer(this.ast, this.options);
-      this.ast = this.normalizer.normalize();
-      this.compiler = new Compiler(this.ast, this.options);
-      cb(null, this.compiler.compile());
+      var css = this.compileAST(this.ast);
+      cb(null, css);
     }.bind(this))
     .fail(function(err) {
       var options = {
@@ -82,6 +84,14 @@ Renderer.prototype.render = function(cb) {
       cb(utils.formatException(err, options));
     }.bind(this));
 };
+
+Renderer.prototype.compileAST = function(ast) {
+  var normalizer = new Normalizer(ast, this.options);
+  ast = normalizer.normalize();
+  var compiler = new Compiler(ast, this.options);
+  var css = compiler.compile();
+  return css
+}
 
 function parseSync(filename) {
   var parser = new Parser(fs.readFileSync(filename, 'utf8'));
