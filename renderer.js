@@ -16,23 +16,21 @@ var fs            = require('fs'),
     Importer      = require('./importer');
 
 var FUNCTIONS_FILENAME = path.join(
-        __dirname,
-        'node_modules/stylus/lib/functions/index.styl');
+    __dirname,
+    'node_modules/stylus/lib/functions/index.styl');
+
+function readFile(filename, options) {
+  var promise = q.defer();
+  fs.readFile(filename, options, promise.makeNodeResolver());
+  return promise;
+}
 
 function getBuiltins() {
-  var promise = q.defer();
-  fs.readFile(FUNCTIONS_FILENAME, 'utf8', function(err, src) {
-    if (err) return promise.reject(err);
-    var block = null;
-    try {
-      var parser = new Parser(src);
-      block = parser.parse();
-    } catch (e) {
-      return promise.reject(err);
-    }
-    promise.resolve([{id: FUNCTIONS_FILENAME, block: block}]);
+  return readFile(FUNCTIONS_FILENAME, 'utf8').then(function(src) {
+    var parser = new Parser(src);
+    var block = parser.parse();
+    return [{id: FUNCTIONS_FILENAME, block: block}];
   });
-  return promise;
 }
 
 /**
@@ -49,9 +47,19 @@ function Renderer(str, options) {
   options.imports = [];
   options.paths = options.paths || [];
   options.filename = options.filename || 'stylus';
+
   this.options = options;
   this.str = str;
   this.imports = undefined;
+  this.parser = new Parser(this.str, this.options);
+  this.ast = undefined;
+}
+
+Renderer.prototype.evaluate = function() {
+  this.evaluator = new Evaluator(this.ast, this.options, this.imports, this.builtins);
+  this.nodes = nodes;
+  this.evaluator.renderer = this;
+  return this.evaluator.evaluate();
 }
 
 /**
@@ -61,45 +69,39 @@ function Renderer(str, options) {
  * @api public
  */
 Renderer.prototype.render = function(cb) {
-  q.resolve()
+  var self = this;
+
+  return q.resolve()
     .then(function() {
-      if (this.options.cachedAST) {
-        var css = this.compileAST(this.options.cachedAST);
+      if (self.options.cachedAST) {
+        var css = self.compile(self.options.cachedAST);
         return cb(null, css);
       }
-      nodes.filename = this.options.filename;
-      this.parser = new Parser(this.str, this.options);
-      this.ast = this.parser.parse();
-      this.importer = new Importer(this.ast, this.options);
-      return this.importer.import()
-    }.bind(this))
+      nodes.filename = self.options.filename;
+      self.ast = self.parser.parse();
+      return new Importer(self.ast, self.options).import();
+    })
     .then(function(imports) {
       return getBuiltins().then(function(builtins) {
-        this.imports = imports;
-        this.evaluator = new Evaluator(this.ast, this.options, imports, builtins);
-        this.nodes = nodes;
-        this.evaluator.renderer = this;
-        this.ast = this.evaluator.evaluate();
-        var css = this.compileAST(this.ast);
-        cb(null, css);
-      }.bind(this));
-    }.bind(this))
+        self.builtins = builtins;
+        self.imports = imports;
+        self.ast = self.evaluate();
+        cb(null, self.compile(self.ast));
+      });
+    })
     .fail(function(err) {
       var options = {
-        input: err.input || this.str,
-        filename: err.filename || this.options.filename,
-        lineno: err.lineno || this.parser.lexer.lineno
+        input: err.input || self.str,
+        filename: err.filename || self.options.filename,
+        lineno: err.lineno || self.parser.lexer.lineno
       };
       cb(utils.formatException(err, options));
-    }.bind(this));
+    });
 };
 
-Renderer.prototype.compileAST = function(ast) {
-  var normalizer = new Normalizer(ast, this.options);
-  ast = normalizer.normalize();
-  var compiler = new Compiler(ast, this.options);
-  var css = compiler.compile();
-  return css
+Renderer.prototype.compile = function(ast) {
+  ast = new Normalizer(ast, this.options).normalize();
+  return new Compiler(ast, this.options).compile();
 }
 
 module.exports = Renderer;
