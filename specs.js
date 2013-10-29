@@ -80,4 +80,18 @@ describe('dgraph-stylus', function() {
       done();
     }).fail(done);
   });
+
+  it('processes pkg deps', function(done) {
+    aggregate(getGraph('depend_on_pkg_index.styl')).then(function(g) {
+      assert.equal(g.length, 2);
+      done();
+    }).fail(done);
+  });
+
+  it('processes pkg deps (refer via package name)', function(done) {
+    aggregate(getGraph('depend_on_pkg.styl')).then(function(g) {
+      assert.equal(g.length, 2);
+      done();
+    }).fail(done);
+  });
 });
