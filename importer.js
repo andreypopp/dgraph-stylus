@@ -3,13 +3,14 @@
 /**
  * Stylus AST visitor which resolves imports to AST asynchronously.
  */
-var Visitor = require('stylus/lib/visitor'),
-    Parser  = require('stylus/lib/parser'),
-    q       = require('kew'),
-    fs      = require('fs-promise'),
-    util    = require('util'),
-    assign  = require('lodash').assign,
-    flatten = require('lodash').flatten;
+var Visitor  = require('stylus/lib/visitor'),
+    Parser   = require('stylus/lib/parser'),
+    q        = require('kew'),
+    fs       = require('fs-promise'),
+    util     = require('util'),
+    assign   = require('lodash').assign,
+    isString = require('lodash').isString,
+    flatten  = require('lodash').flatten;
 
 function readModule(mod) {
   var p = fs.readFile(mod.id, 'utf8').then(function(source) {
@@ -45,7 +46,7 @@ Importer.prototype.resolve = function(imports, parent) {
   var promises = imports.map(function(imp) {
     var id = imp.id;
 
-    if (!id) return;
+    if (!isString(id)) return;
 
     if (id.match(/^\.|\//) && !id.match(/\.(css|styl)/))
       id = id + '.styl';
