@@ -10,7 +10,7 @@
     "stylus": "~0.38.0"
   },
   "devDependencies": {
-    "dgraph": "~0.6.2",
+    "dgraph": ">= 0.10.x",
     "semver": "~2.1.0",
     "jshint": "~2.1.11",
     "mocha": "~1.13.0",
