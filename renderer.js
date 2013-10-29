@@ -12,6 +12,7 @@ var fs            = require('fs'),
     Normalizer    = require('stylus/lib/visitor/normalizer'),
     nodes         = require('stylus/lib/nodes'),
     utils         = require('stylus/lib/utils'),
+    buildMap      = require('./map-builder'),
     Evaluator     = require('./evaluator'),
     Importer      = require('./importer');
 
@@ -53,6 +54,16 @@ function Renderer(str, options) {
   this.imports = undefined;
   this.parser = new Parser(this.str, this.options);
   this.ast = undefined;
+  this.map = options.map || {};
+}
+
+Renderer.prototype.updateMap = function(ast) {
+  var map = buildMap(ast);
+  for (var k in map)
+    if (this.map[k])
+      this.map[k] = this.map[k].concat(map[k])
+    else
+      this.map[k] = map[k];
 }
 
 Renderer.prototype.evaluate = function() {
@@ -86,10 +97,13 @@ Renderer.prototype.render = function(cb) {
         self.builtins = builtins;
         self.imports = imports;
         self.ast = self.evaluate();
+        for (var k in imports)
+          self.updateMap(imports[k].evaluatedBlock);
         cb(null, self.compile(self.ast));
       });
     })
     .fail(function(err) {
+      return cb(err);
       var options = {
         input: err.input || self.str,
         filename: err.filename || self.options.filename,
@@ -100,7 +114,9 @@ Renderer.prototype.render = function(cb) {
 };
 
 Renderer.prototype.compile = function(ast) {
-  ast = new Normalizer(ast, this.options).normalize();
+  var normalizer = new Normalizer(ast, this.options);
+  normalizer.map = this.map;
+  ast = normalizer.normalize();
   return new Compiler(ast, this.options).compile();
 }
 

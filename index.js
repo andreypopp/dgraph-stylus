@@ -9,6 +9,7 @@ module.exports = function(mod, graph) {
   graph.__stylus_cache = graph.__stylus_cache || {};
 
   var renderer = new Renderer(mod.source.toString(), {
+    map: graph.__stylus_map,
     cachedAST: graph.__stylus_cache[mod.id],
     filename: mod.id,
     resolve: graph.resolve.bind(graph)
@@ -23,6 +24,7 @@ module.exports = function(mod, graph) {
         deps[id] = id;
         graph.__stylus_cache[id] = renderer.imports[id].evaluatedBlock;
       }
+      graph.__stylus_map = renderer.map;
       promise.resolve({source: source, deps: deps});
     }
   });

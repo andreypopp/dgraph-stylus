@@ -16,6 +16,13 @@ function getGraph(filename) {
   })
 }
 
+function assertContains(graph, source) {
+  var ok = graph.some(function(mod) {
+    return mod.source.indexOf(source) > -1;
+  });
+  assert.ok(ok, 'graph should contain a module with specified source');
+}
+
 describe('dgraph-stylus', function() {
 
   it('produces graph', function(done) {
@@ -100,6 +107,17 @@ describe('dgraph-stylus', function() {
 
   it('can compile bootstrap', function(done) {
     aggregate(getGraph('depend_on_bootstrap.styl')).then(function(g) {
+      done();
+    }).fail(done);
+  });
+
+  it('can @extend selector from an imported module', function(done) {
+    aggregate(getGraph('extend.styl')).then(function(g) {
+      assert.equal(g.length, 3)
+      console.log(g);
+      assertContains(g, '.b,\n.a {\n  font-size: 12%;\n}\n');
+      assertContains(g, '.a {\n  color: #f00;\n}');
+      assertContains(g, '.superbase,\n.a,\n.b {\n  background: #f00;\n}\n');
       done();
     }).fail(done);
   });
