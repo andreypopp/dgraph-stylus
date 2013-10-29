@@ -114,7 +114,6 @@ describe('dgraph-stylus', function() {
   it('can @extend selector from an imported module', function(done) {
     aggregate(getGraph('extend.styl')).then(function(g) {
       assert.equal(g.length, 3)
-      console.log(g);
       assertContains(g, '.b,\n.a {\n  font-size: 12%;\n}\n');
       assertContains(g, '.a {\n  color: #f00;\n}');
       assertContains(g, '.superbase,\n.a,\n.b {\n  background: #f00;\n}\n');

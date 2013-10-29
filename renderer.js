@@ -103,7 +103,6 @@ Renderer.prototype.render = function(cb) {
       });
     })
     .fail(function(err) {
-      return cb(err);
       var options = {
         input: err.input || self.str,
         filename: err.filename || self.options.filename,
