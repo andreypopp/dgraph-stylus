@@ -23,9 +23,10 @@ function getBuiltins() {
   var promise = q.defer();
   fs.readFile(FUNCTIONS_FILENAME, 'utf8', function(err, src) {
     if (err) return promise.reject(err);
+    var block = null;
     try {
       var parser = new Parser(src);
-      var block = parser.parse();
+      block = parser.parse();
     } catch (e) {
       return promise.reject(err);
     }
