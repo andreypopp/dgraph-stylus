@@ -14,7 +14,7 @@ var fs            = require('fs'),
     utils         = require('stylus/lib/utils'),
     buildMap      = require('./map-builder'),
     Evaluator     = require('./evaluator'),
-    Importer      = require('./importer');
+    resolve       = require('./importer');
 
 var FUNCTIONS_FILENAME = path.join(
     __dirname,
@@ -34,26 +34,18 @@ function getBuiltins() {
   });
 }
 
-/**
- * Initialize a new `Renderer` with the given `str` and `options`.
- *
- * @param {String} str
- * @param {Object} options
- * @api public
- */
-function Renderer(str, options) {
+function Renderer(mod, options) {
   options = options || {};
   options.globals = {};
   options.functions = {};
   options.imports = [];
   options.paths = options.paths || [];
-  options.filename = options.filename || 'stylus';
+  options.filename = mod.id;
 
+  this.mod = mod;
   this.options = options;
-  this.str = str;
   this.imports = undefined;
-  this.parser = new Parser(this.str, this.options);
-  this.ast = undefined;
+  this.parser = new Parser(mod.source.toString(), this.options);
   this.map = options.map || {};
 }
 
@@ -67,7 +59,7 @@ Renderer.prototype.updateMap = function(ast) {
 }
 
 Renderer.prototype.evaluate = function() {
-  this.evaluator = new Evaluator(this.ast, this.options, this.imports, this.builtins);
+  this.evaluator = new Evaluator(this.mod.block, this.options, this.imports, this.builtins);
   this.nodes = nodes;
   this.evaluator.renderer = this;
   return this.evaluator.evaluate();
@@ -84,22 +76,21 @@ Renderer.prototype.render = function(cb) {
 
   return q.resolve()
     .then(function() {
-      if (self.options.cachedAST) {
-        var css = self.compile(self.options.cachedAST);
-        return cb(null, css);
+      if (self.mod.block) {
+        self.mod.source = self.compile(self.mod.block);
+        return cb(null, self.mod);
       }
-      nodes.filename = self.options.filename;
-      self.ast = self.parser.parse();
-      return new Importer(self.ast, self.options).import();
+      return resolve(self.mod, self.options);
     })
     .then(function(imports) {
       return getBuiltins().then(function(builtins) {
         self.builtins = builtins;
         self.imports = imports;
-        self.ast = self.evaluate();
+        self.mod.block = self.evaluate();
         for (var k in imports)
-          self.updateMap(imports[k].evaluatedBlock);
-        cb(null, self.compile(self.ast));
+          self.updateMap(imports[k].block);
+        self.mod.source = self.compile(self.mod.block);
+        cb(null, self.mod);
       });
     })
     .fail(function(err) {

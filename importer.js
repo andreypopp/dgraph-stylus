@@ -5,7 +5,9 @@
  */
 var Visitor  = require('stylus/lib/visitor'),
     Parser   = require('stylus/lib/parser'),
+    nodes    = require('stylus/lib/nodes'),
     q        = require('kew'),
+    all      = q.all,
     fs       = require('fs-promise'),
     util     = require('util'),
     assign   = require('lodash').assign,
@@ -24,67 +26,94 @@ function asLocal(id) {
   return './' + id.replace(/\.styl$/, '') + '.styl';
 }
 
-function Importer(root, options, imports) {
-  Visitor.call(this, root);
-  this.options = options;
-  this.imports = {};
-}
-util.inherits(Importer, Visitor);
-
-Importer.prototype.import = function() {
-  return this.resolve(this.visit(this.root))
-    .then(function() { return this.imports; }.bind(this));
-}
-
-Importer.prototype.resolve = function(imports, parent) {
-  if (imports.length === 0)
-    return q.resolve([]);
-
-  parent = parent || {id: this.options.filename};
-  parent.extensions = ['.styl'];
-
-  var self = this;
-  var promises = imports.map(function(imp) {
-    var id = imp.id;
-
-    if (!isString(id)) return;
-
-    return self.options.resolve(asLocal(id), parent)
-      .fail(function() { return self.options.resolve(id, parent); })
-      .then(readModule)
-      .then(function(mod) {
-        if (imp.node)
-          imp.node.path.nodes[0].val = mod.id;
-        var block = self.parseModule(mod);
-        return {id: mod.id, block: block, package: mod.package};
-      });
-
-  });
-
-  return q.all(promises.filter(Boolean)).then(function(imports) {
-    var promises = imports.map(function(imp) {
-          self.imports[imp.id] = imp;
-          var parent = {id: imp.id, package: imp.package};
-          return self.resolve(self.visit(imp.block), parent);
-        });
-    return q.all(flatten(promises));
-  });
-}
-
-Importer.prototype.parseModule = function(mod) {
-  var options = assign({}, this.options, {filename: mod.id}),
-      parser = new Parser(mod._source, options);
+function parse(mod, options) {
+  nodes.filename = mod.id;
+  var options = assign({}, options, {filename: mod.id}),
+      parser = new Parser(mod.source && mod.source.toString() || mod._source, options);
   return parser.parse();
 }
 
+function resolve(mod, options) {
+  mod.block = parse(mod, options);
+  mod.deps = {};
+  var ids = findImports(mod.block, options);
+
+  if (ids.length === 0)
+    return q.resolve({});
+
+  var parent = assign({extensions: ['.styl']}, mod);
+
+  var promises = ids.map(function(imp) {
+    var id = imp.id, node = imp.node;
+    return options.resolve(asLocal(id), parent)
+      .fail(function() { return options.resolve(id, parent); })
+      .then(function(m) { return {id: m.id}; })
+      .then(readModule)
+      .then(function(m) {
+        mod.deps[m.id] = m.id;
+        node.path.nodes[0].val = m.id;
+        return m;
+      });
+  });
+
+  return all(promises).then(function(mods) {
+    var result = {};
+    var promises = mods.map(function(mod) {
+      result[mod.id] = mod;
+      return resolve(mod, options).then(function(mods) {
+        assign(result, mods);
+      });
+    });
+    return all(promises).then(function() { return result; });
+  });
+}
+
+function findImports(root, options) {
+  var importer = new Importer(root, options);
+  importer.find();
+  return importer.imports;
+}
+
+function Importer(root, options) {
+  Visitor.call(this, root);
+  this.options = options;
+  this.imports = [];
+}
+util.inherits(Importer, Visitor);
+
+Importer.prototype.find = function() {
+  this.visit(this.root);
+}
+
+Importer.prototype.visitGroup = function(node) {
+  for (var i = 0, len = node.nodes.length; i < len; i++)
+    this.visit(node.nodes[i]);
+}
+
+Importer.prototype.visitFunction = function(node) {
+  this.visit(node.block);
+}
+
+Importer.prototype.visitBlock = function(node) {
+  for (var i = 0, len = node.nodes.length; i < len; i++)
+    this.visit(node.nodes[i]);
+}
+
+Importer.prototype.visitIdent = function(node) {
+  if (node.val) this.visit(node.val);
+}
+
 Importer.prototype.visitRoot = function(node) {
-  return node.nodes
-    .filter(function(node) { return node.constructor.name === 'Import'; })
-    .map(this.visit.bind(this));
+  for (var i = 0, len = node.nodes.length; i < len; i++)
+    this.visit(node.nodes[i]);
 }
 
 Importer.prototype.visitImport = function(node) {
-  return {node: node, id: node.path.nodes[0].val};
+  if (node.path &&
+      node.path.nodes &&
+      node.path.nodes.length > 0 &&
+      isString(node.path.nodes[0].val))
+    this.imports.push({node: node, id: node.path.nodes[0].val});
 }
 
-module.exports = Importer;
+module.exports = resolve;

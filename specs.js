@@ -11,7 +11,7 @@ function fixture(filename) {
 
 function getGraph(filename) {
   return dgraph(fixture(filename), {
-    transform: transform,
+    globalTransform: transform,
     transformKey: ["browserify", "transform"]
   })
 }
@@ -125,6 +125,13 @@ describe('dgraph-stylus', function() {
     aggregate(getGraph('dep_on_dir.styl')).then(function(g) {
       assert.equal(g.length, 2);
       assertContains(g, 'body {\n  ticket: \'dir/index\';\n}\n');
+      done();
+    }).fail(done);
+  });
+
+  it('can compile normalize', function(done) {
+    aggregate(getGraph('depend_on_normalize.styl')).then(function(g) {
+      assert.equal(g.length, 5);
       done();
     }).fail(done);
   });
