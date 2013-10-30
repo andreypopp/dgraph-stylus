@@ -120,4 +120,12 @@ describe('dgraph-stylus', function() {
       done();
     }).fail(done);
   });
+
+  it('looks up an index.styl if id is resolved to a directory', function(done) {
+    aggregate(getGraph('dep_on_dir.styl')).then(function(g) {
+      assert.equal(g.length, 2);
+      assertContains(g, 'body {\n  ticket: \'dir/index\';\n}\n');
+      done();
+    }).fail(done);
+  });
 });

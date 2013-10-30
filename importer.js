@@ -41,15 +41,13 @@ Importer.prototype.resolve = function(imports, parent) {
     return q.resolve([]);
 
   parent = parent || {id: this.options.filename};
+  parent.extensions = ['.styl'];
 
   var self = this;
   var promises = imports.map(function(imp) {
     var id = imp.id;
 
     if (!isString(id)) return;
-
-    if (id.match(/^\.|\//) && !id.match(/\.(css|styl)/))
-      id = id + '.styl';
 
     return self.options.resolve(asLocal(id), parent)
       .fail(function() { return self.options.resolve(id, parent); })
