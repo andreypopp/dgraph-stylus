@@ -11,8 +11,7 @@ var Visitor  = require('stylus/lib/visitor'),
     fs       = require('fs-promise'),
     util     = require('util'),
     assign   = require('lodash').assign,
-    isString = require('lodash').isString,
-    flatten  = require('lodash').flatten;
+    isString = require('lodash').isString;
 
 function readModule(mod) {
   var p = fs.readFile(mod.id, 'utf8').then(function(source) {
@@ -28,8 +27,8 @@ function asLocal(id) {
 
 function parse(mod, options) {
   nodes.filename = mod.id;
-  var options = assign({}, options, {filename: mod.id}),
-      parser = new Parser(mod.source && mod.source.toString() || mod._source, options);
+  options = assign({}, options, {filename: mod.id});
+  var parser = new Parser(mod.source && mod.source.toString() || mod._source, options);
   return parser.parse();
 }
 
@@ -59,6 +58,8 @@ function resolve(mod, options) {
   return all(promises).then(function(mods) {
     var result = {};
     var promises = mods.map(function(mod) {
+      if (result[mod.id])
+        return;
       result[mod.id] = mod;
       return resolve(mod, options).then(function(mods) {
         assign(result, mods);
